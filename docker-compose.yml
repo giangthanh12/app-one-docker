@@ -1,0 +1,68 @@
+version: '3'
+
+networks:
+  laravel:
+  my-shared-network:
+    external: true
+
+services:
+  site:
+    image: nginx:stable-alpine
+    container_name: nginx_1
+    ports:
+      - "8081:80"
+    volumes:
+      - ./src:/var/www/html
+      - ./dockerfiles/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./dockerfiles/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - php
+    networks:
+      - laravel
+      - my-shared-network
+  php:
+    build:
+      context: .
+      dockerfile: php.dockerfile
+    container_name: php_1
+    volumes:
+      - ./src:/var/www/html
+      - ./dockerfiles/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+    ports:
+      - "9001:9000"
+    networks:
+      - laravel
+      - my-shared-network
+
+  composer:
+    image: composer:latest
+    container_name: composer_1
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      - php
+    networks:
+      - laravel
+      - my-shared-network
+
+  npm:
+    image: node:19.1.0-slim
+    container_name: npm_1
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: ['npm']
+
+  artisan:
+    build:
+      context: .
+      dockerfile: php.dockerfile
+    container_name: artisan_1
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: ['php', '/var/www/html/artisan']
+    networks:
+      - laravel
+      - my-shared-network
